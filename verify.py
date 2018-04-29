@@ -16,31 +16,33 @@ def get_current_time():
     return time.strftime('%Y-%m-%d %X', time.localtime())
 
 
-class IsEnable(threading.Thread):
+class VerifyIP(threading.Thread):
     def __init__(self, ip):
-        super(IsEnable, self).__init__()
+        super(VerifyIP, self).__init__()
         self.ip = ip
         self.proxies = {
-            'http': 'http://%s' % (ip)
+            'http': 'http://%s' % ip,
+            'https': 'http://%s' % ip
         }
 
     def run(self):
         try:
-            html = requests.get('http://httpbin.org/ip', proxies=self.proxies, timeout=3).text
-            result = eval(html)['origin']
-            if len(result.split(',')) == 2:
-                with lock:
-                    self.delete()
-                return
-            elif result in self.ip:
+            if self.check_ip():
                 with lock:
                     self.update()
             else:
                 with lock:
                     self.delete()
-        except:
+        except Exception as e:
             with lock:
                 self.delete()
+
+    def check_ip(self):
+        res_data = requests.get('https://www.nyloner.cn/checkip',
+                                proxies=self.proxies, timeout=5).json()
+        if res_data['remote_ip'] in self.ip:
+            return True
+        return False
 
     def update(self):
         global cursor
@@ -48,7 +50,8 @@ class IsEnable(threading.Thread):
         global update_ip_count
         try:
             date = get_current_time()
-            cursor.execute("update proxypool set time='%s' where ip='%s'" % (date, self.ip.split(':')[0]))
+            cursor.execute("update proxypool set time='%s' where ip='%s'" % (
+                date, self.ip.split(':')[0]))
             conn.commit()
             update_ip_count += 1
         except:
@@ -59,7 +62,8 @@ class IsEnable(threading.Thread):
         global conn
         global delete_ip_count
         try:
-            cursor.execute("delete from proxypool where ip='%s'" % (self.ip.split(':')[0]))
+            cursor.execute("delete from proxypool where ip='%s'" %
+                           (self.ip.split(':')[0]))
             conn.commit()
             delete_ip_count += 1
         except:
@@ -79,7 +83,7 @@ def verify():
                 count += 1
             except:
                 break
-            work = IsEnable(ip)
+            work = VerifyIP(ip)
             work.setDaemon(True)
             work.start()
         time.sleep(5)
@@ -98,8 +102,10 @@ if __name__ == '__main__':
                                charset='utf8')
         cursor = conn.cursor()
         verify()
-        print('[%s][Verify]Delete IP Count:' % get_current_time(), delete_ip_count)
-        print('[%s][Verify]Update IP Count:' % get_current_time(), update_ip_count)
+        print('[%s][Verify]Delete IP Count:' %
+              get_current_time(), delete_ip_count)
+        print('[%s][Verify]Update IP Count:' %
+              get_current_time(), update_ip_count)
         time.sleep(180)
         cursor.close()
         conn.commit()
