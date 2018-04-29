@@ -1,83 +1,37 @@
-import requests
 import threading
 import time
-import pymysql
-import json
 
 from proxy_spiders.spider_66ip import SpiderIP66
 from proxy_spiders.spider_89ip import SpiderIP89
 from proxy_spiders.spider_data5u import SpiderData5u
 from proxy_spiders.spider_xicidaili import SpiderXicidaili
 from proxy_spiders.spider_coderbusy import SpiderCoderBusy
-from proxy_spiders.spider_mimvp import SpiderMimvp
 from proxy_spiders.spider_kuaidaili import SpiderKuaidaili
 
-from conf import MYSQL_CONF
+from logic import logic_proxypool
+
+THREAD_NUM = 20
 
 
-class IsEnable(threading.Thread):
+class VerifyIP(threading.Thread):
     def __init__(self, ip):
-        super(IsEnable, self).__init__()
+        super(VerifyIP, self).__init__()
         self.ip = ip
-        self.proxies = {
-            'http': 'http://%s' % ip,
-            'https': 'http://%s' % ip
-        }
 
     def run(self):
-        try:
-            if self.check_ip():
-                with lock:
-                    self.insert_into_sql()
-        except:
-            return
-
-    def check_ip(self):
-        res_data = requests.get('https://www.nyloner.cn/checkip',
-                                proxies=self.proxies, timeout=5).json()
-        if res_data['remote_ip'] in self.ip:
-            print(res_data)
-            return True
-        return False
-
-    def insert_into_sql(self):
-        global cursor
-        global conn
-        global crawl_ip_count
-        try:
-            date = time.strftime('%Y-%m-%d %X', time.localtime())
-            cursor.execute("insert into proxypool(ip,port,time) values" + str(
-                (self.ip.split(':')[0], self.ip.split(':')[1], date)))
-            conn.commit()
-            crawl_ip_count += 1
-        except:
-            pass
-
-
-def get_current_time():
-    return time.strftime('%Y-%m-%d %X', time.localtime())
+        logic_proxypool.insert_into_proxypool(self.ip)
 
 
 if __name__ == '__main__':
-    lock = threading.Lock()
-    crawlers = [
-        SpiderCoderBusy,
-        SpiderIP66,
-        SpiderIP89,
-        SpiderData5u,
-        SpiderXicidaili,
-        SpiderKuaidaili
-    ]
-
     while True:
-        crawl_ip_count = 0
-        conn = pymysql.connect(host=MYSQL_CONF['host'],
-                               user=MYSQL_CONF['user'],
-                               passwd=MYSQL_CONF['passwd'],
-                               db=MYSQL_CONF['db'],
-                               port=MYSQL_CONF['port'],
-                               charset='utf8')
-        cursor = conn.cursor()
+        crawlers = [
+            SpiderCoderBusy,
+            SpiderIP66,
+            SpiderIP89,
+            SpiderData5u,
+            SpiderXicidaili,
+            SpiderKuaidaili
+        ]
         result = []
         tasks = []
         for crawler in crawlers:
@@ -93,25 +47,11 @@ if __name__ == '__main__':
                 result += task.result
             except:
                 continue
-        while (len(result)):
-            num = 0
-            while (num < 50):
-                try:
-                    ip = result.pop()
-                except:
+        while len(result):
+            for i in range(THREAD_NUM):
+                if len(result) == 0:
                     break
-                work = IsEnable(ip)
-                work.setDaemon(True)
-                work.start()
-                num += 1
+                ip = result.pop(0)
+                task = VerifyIP(ip)
+                task.start()
             time.sleep(5)
-        try:
-            conn.commit()
-        except:
-            pass
-        cursor.close()
-        conn.close()
-        print('[%s][ProxyPool]Crawl IP Count:' %
-              get_current_time(), crawl_ip_count)
-        print('[%s][ProxyPool][Sleeping]' % get_current_time())
-        time.sleep(600)

@@ -1,19 +1,28 @@
 ## ProxyPool
 
 ### 1.配置
-#### 数据库配置
-在`conf.py`中修改数据库配置，并新建`proxypool`表。
-```
-sql>create table proxypool(ip char(20),port char(5),time char(30));
-```
 
-#### 安装Python库
+#### 安装依赖
 ```
 pip3 install pymysql
 pip3 install requests
 pip3 install bs4
 pip3 install lxml
+pip3 install sqlalchemy
 ```
+
+#### 数据库配置
+在`conf/setting.py`中配置数据库
+```
+DATABASE_URI = 'mysql+pymysql://root:123456@127.0.0.1:3306/proxypool?charset=utf8'
+```
+
+初始化数据库
+```
+python3 init.py
+```
+
+
 ### 2.运行
 抓取代理IP
 ```

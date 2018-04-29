@@ -1,15 +1,13 @@
 # encoding: utf-8
-import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 import pymysql
-from conf import MYSQL_CONF
 import random
+
+from conf.setting import MYSQL_CONF
 
 HOST_NAME = 'localhost'
 PORT_NUMBER = 5000
-
-
 
 
 class MyHandler(BaseHTTPRequestHandler):
@@ -34,23 +32,24 @@ class MyHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         conn = pymysql.connect(host=MYSQL_CONF['host'],
-                            user=MYSQL_CONF['user'],
-                            passwd=MYSQL_CONF['passwd'],
-                            db=MYSQL_CONF['db'],
-                            port=MYSQL_CONF['port'],
-                            charset='utf8')
+                               user=MYSQL_CONF['user'],
+                               passwd=MYSQL_CONF['passwd'],
+                               db=MYSQL_CONF['db'],
+                               port=MYSQL_CONF['port'],
+                               charset='utf8')
         cursor = conn.cursor()
-        cursor.execute('select ip,port from proxypool')
+        cursor.execute('select ip,ip_port from proxypool')
         ip_list = []
         for row in cursor.fetchall():
             ip_list.append("%s:%s" % (row[0], row[1]))
-        
+
         content = random.choice(ip_list)
         return bytes(content, 'UTF-8')
 
     def respond(self, opts):
         response = self.handle_http(opts['status'], self.path)
         self.wfile.write(response)
+
 
 if __name__ == '__main__':
     server_class = HTTPServer

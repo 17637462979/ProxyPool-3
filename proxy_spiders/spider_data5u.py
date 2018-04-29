@@ -1,31 +1,21 @@
-import requests
-import re
-import logging
-import time
 import threading
 from bs4 import BeautifulSoup
 
-headers = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Encoding": "gzip, deflate",
-    "Accept-Language": "en-US,en;q=0.5",
-    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/44.0"}
-
-
-def get_current_time():
-    timenow = time.strftime('%Y-%m-%d %X', time.localtime())
-    return timenow
+from logic import logic_common
+from logger.error_log import error_log
+from logger.info_log import info_log
 
 
 def crawl():
-    urls = ['http://www.data5u.com/free/gngn/index.shtml','http://www.data5u.com/free/gwgn/index.shtml','http://www.data5u.com/free/gnpt/index.shtml','http://www.data5u.com/free/gwpt/index.shtml']
+    urls = ['http://www.data5u.com/free/gngn/index.shtml', 'http://www.data5u.com/free/gwgn/index.shtml',
+            'http://www.data5u.com/free/gnpt/index.shtml', 'http://www.data5u.com/free/gwpt/index.shtml']
     result = []
     for url in urls:
         try:
-            html = requests.get(url, headers=headers, timeout=10).text
-            table = BeautifulSoup(html, 'lxml').find_all('ul', {"class": 'l2'})
+            req = logic_common.build_request(url)
+            table = BeautifulSoup(req.text, 'lxml').find_all('ul', {"class": 'l2'})
         except Exception as e:
-            print('[%s][Spider][data5u]Error:' % get_current_time(), e)
+            error_log.error('Spider data5u error.[msg]={}'.format(e))
             continue
         for item in table[1:]:
             try:
@@ -36,13 +26,15 @@ def crawl():
                 continue
             line = ip + ':' + port
             result.append(line.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', ''))
-    print('[%s][Spider][data5u]OK!' % get_current_time(), 'Crawled IP Count:', len(result))
+    info_log.info('Spider data5u success.Crawled IP Count:{}'.format(len(result)))
     return result
 
 
 class SpiderData5u(threading.Thread):
     def __init__(self):
         super(SpiderData5u, self).__init__()
+        self.daemon = True
+
 
     def run(self):
         self.result = crawl()
