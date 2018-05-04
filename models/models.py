@@ -22,7 +22,7 @@ class ProxyPool(Base):
     """
     __tablename__ = 'proxypool'
     id = sqlalchemy.Column(sqlalchemy.INT, nullable=False, primary_key=True, autoincrement=True)
-    ip = sqlalchemy.Column(sqlalchemy.VARCHAR(20), nullable=False)
+    ip = sqlalchemy.Column(sqlalchemy.VARCHAR(20), unique=True, nullable=False)
     ip_port = sqlalchemy.Column(sqlalchemy.VARCHAR(6), nullable=False)
     utime = sqlalchemy.Column(sqlalchemy.Integer, default=0)
     ctime = sqlalchemy.Column(sqlalchemy.Integer, default=0)
